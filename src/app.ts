@@ -1,9 +1,7 @@
-//import express from 'express';
 import express from 'express'
 
 import init from './tracer';
-//const { tracer } = init('app-services', 8091);
-init('app-services', 8091);
+const { tracer } = init('app-services');
 
 const app = express();
 
