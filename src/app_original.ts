@@ -1,5 +1,6 @@
-require('./tracer.ts')('app-services'); //this should be the first line
 import express from 'express'
+
+require('./tracer.ts')('app-services');
 
 const app = express();
 

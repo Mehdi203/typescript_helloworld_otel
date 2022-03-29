@@ -1,4 +1,4 @@
-
+import opentelemetry from '@opentelemetry/api';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { SimpleSpanProcessor, BatchSpanProcessor, ConsoleSpanExporter, } from '@opentelemetry/sdk-trace-base';
 import { Resource } from '@opentelemetry/resources';
@@ -9,18 +9,15 @@ import { ExpressInstrumentation, ExpressRequestHookInformation } from 'opentelem
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 
 
-const init = function (serviceName: string) {
+module.exports = (serviceName: string) => {
 
+  //Specify zipkin url. defualt url is http://localhost:9411/api/v2/spans
+  const zipkinUrl = 'http://localhost';
+  const zipkinPort = '9411';
+  const zipkinPath = '/api/v2/spans';
+  const zipkinURL = `${zipkinUrl}:${zipkinPort}${zipkinPath}`;
 
-//*********************zipkin***********************************
-
-    //Specify zipkin url. defualt url is http://localhost:9411/api/v2/spans
-const zipkinUrl = 'http://localhost';
-const zipkinPort = '9411';
-const zipkinPath = '/api/v2/spans';
-const zipkinURL = `${zipkinUrl}:${zipkinPort}${zipkinPath}`;
-
-const options = {
+  const options = {
     headers: {
       'my-header': 'header-value',
     },
@@ -35,40 +32,30 @@ const options = {
       }
     }
   }
-    const traceExporter_zipkin = new ZipkinExporter(options);
+  const traceExporter_zipkin = new ZipkinExporter(options);
 
-////////*************End zip kin config */
+  const provider = new NodeTracerProvider({
+    resource: new Resource({
+      [SemanticResourceAttributes.SERVICE_NAME]: serviceName,
+    }),
+  });
 
+  provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
+  provider.addSpanProcessor(new SimpleSpanProcessor(traceExporter_zipkin));
 
-    const provider = new NodeTracerProvider({
-        resource: new Resource({
-            [SemanticResourceAttributes.SERVICE_NAME]: serviceName
-        }),
+  provider.register();
 
-    });
+  registerInstrumentations({
+    instrumentations: [
+      // new ExpressInstrumentation({
+      //     requestHook: (span, reqInfo) => {
+      //         span.setAttribute('request-headers',JSON.stringify(reqInfo.req.headers))
+      //     }
+      // }),
+      new ExpressInstrumentation(),
+      new HttpInstrumentation()
+    ],
+  });
 
-    //export to console
-    provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
-
-    //export to zipkin
-    provider.addSpanProcessor(new SimpleSpanProcessor(traceExporter_zipkin));
-
-
-    provider.register();
-    registerInstrumentations({
-        instrumentations: [
-            // new ExpressInstrumentation({
-            //     requestHook: (span, reqInfo) => {
-            //         span.setAttribute('request-headers',JSON.stringify(reqInfo.req.headers))
-            //     }
-            // }),
-            new HttpInstrumentation(),
-            new ExpressInstrumentation()
-
-        ]
-    });
-    const tracer = provider.getTracer(serviceName);
-    return { tracer };
-}
-
-export default init;
+  return opentelemetry.trace.getTracer(serviceName);
+};
