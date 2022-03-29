@@ -1,7 +1,6 @@
-import express from 'express'
+require('./tracer.ts')('app-services');
 
-import init from './tracer';
-const { tracer } = init('app-services');
+const express = require('express');
 
 const app = express();
 
